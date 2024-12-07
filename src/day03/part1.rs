@@ -94,7 +94,7 @@ impl<'a> TapeMachine<'a> {
         return word;
     }
 
-    fn play(&mut self) -> Vec<Token> {
+    fn process(&mut self) -> Vec<Token> {
         let mut out: Vec<Token> = Vec::new();
         while let Some(token) = self.next_token() {
             out.push(token);
@@ -109,13 +109,13 @@ fn main() {
         .chars()
         .collect::<Vec<char>>();
     let mut tm = TapeMachine::from_chars(&content);
-    let parsed = tm.play();
+    let parsed = tm.process();
     let x = parsed
         .windows(6)
         .filter_map(|win| {
             let mut it = win.iter();
             if let Some(Token::Word(wrd)) = it.next() {
-                if wrd == &"mul".to_string() {
+                if wrd.contains(&"mul".to_string()) {
                     if let Some(Token::OpenParen) = it.next() {
                         if let Some(Token::Number(x)) = it.next() {
                             if let Some(Token::Comma) = it.next() {
