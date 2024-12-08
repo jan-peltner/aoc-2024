@@ -28,6 +28,7 @@ struct TapeMachine<'a, State = Uninitialized> {
     splice_from: Vec<Token>,
     splice_to: Vec<Token>,
     splice_state: SpliceState,
+    known_words: Vec<&'a str>,
     _state: std::marker::PhantomData<State>,
 }
 
@@ -40,12 +41,18 @@ impl<'a> TapeMachine<'a, Uninitialized> {
             spliced_tape: Vec::new(),
             splice_from: Vec::new(),
             splice_to: Vec::new(),
+            known_words: Vec::new(),
             splice_state: SpliceState::Keep,
             _state: std::marker::PhantomData,
         }
     }
 
-    fn with_splice_sequences(self, from: Vec<Token>, to: Vec<Token>) -> TapeMachine<'a, Ready> {
+    fn with_splice_sequences(
+        self,
+        from: Vec<Token>,
+        to: Vec<Token>,
+        known_words: Vec<&'a str>,
+    ) -> TapeMachine<'a, Ready> {
         TapeMachine {
             tape: self.tape,
             head: self.head,
@@ -54,6 +61,7 @@ impl<'a> TapeMachine<'a, Uninitialized> {
             splice_from: from,
             splice_to: to,
             splice_state: self.splice_state,
+            known_words,
             _state: std::marker::PhantomData,
         }
     }
@@ -119,16 +127,23 @@ impl<'a> TapeMachine<'a, Ready> {
 
     fn discover_word(&mut self) -> String {
         let mut word = String::new();
+
         while self.head < self.tape.len() {
             let current_char = self.get_char_at_head();
             if current_char.is_ascii_alphabetic() || current_char == '\'' {
                 word.push(current_char);
-                self.advance_head()
+                self.advance_head();
             } else {
                 break;
             }
         }
-        return word;
+
+        for i in 0..word.len() {
+            if let Some(kword) = self.known_words.iter().find(|kword| **kword == &word[i..]) {
+                return kword.to_string();
+            }
+        }
+        "UNKNOWN".to_string()
     }
 
     fn scan_splice_sequence(&self) -> Option<&[Token]> {
@@ -152,16 +167,9 @@ impl<'a> TapeMachine<'a, Ready> {
                 }
             }
             if let Some(seq) = self.scan_splice_sequence() {
-                self.splice_from
-                    .iter()
-                    .zip(seq)
-                    .all(|(lhs, rhs)| match lhs {
-                        &Token::Wordish(wrd) => {}
-                    });
                 if seq == self.splice_to {
                     self.splice_state = SpliceState::Cut;
                 } else if seq == self.splice_from {
-                    dbg!(seq);
                     self.splice_state = SpliceState::Keep;
                 }
             }
@@ -185,30 +193,31 @@ fn main() {
         Token::OpenParen,
         Token::ClosedParen,
     ];
-    let tm = TapeMachine::from_tape(&content).with_splice_sequences(from, to);
+    let known_words = vec!["do", "don't", "mul"];
+    let tm = TapeMachine::from_tape(&content).with_splice_sequences(from, to, known_words);
     let parsed = tm.process();
     // dbg!(&parsed);
-    // let x = parsed
-    //     .windows(6)
-    //     .filter_map(|win| {
-    //         let mut it = win.iter();
-    //         if let Some(Token::Wordish(wrd)) = it.next() {
-    //             if wrd.contains(&"mul".to_string()) {
-    //                 if let Some(Token::OpenParen) = it.next() {
-    //                     if let Some(Token::Number(x)) = it.next() {
-    //                         if let Some(Token::Comma) = it.next() {
-    //                             if let Some(Token::Number(y)) = it.next() {
-    //                                 if let Some(Token::ClosedParen) = it.next() {
-    //                                     return Some(x * y);
-    //                                 }
-    //                             }
-    //                         }
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //         return None;
-    //     })
-    //     .sum::<i64>();
-    // println!("{x}");
+    let x = parsed
+        .windows(6)
+        .filter_map(|win| {
+            let mut it = win.iter();
+            if let Some(Token::Wordish(wrd)) = it.next() {
+                if wrd == &"mul".to_string() {
+                    if let Some(Token::OpenParen) = it.next() {
+                        if let Some(Token::Number(x)) = it.next() {
+                            if let Some(Token::Comma) = it.next() {
+                                if let Some(Token::Number(y)) = it.next() {
+                                    if let Some(Token::ClosedParen) = it.next() {
+                                        return Some(x * y);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            return None;
+        })
+        .sum::<i64>();
+    println!("{x}");
 }
