@@ -32,11 +32,11 @@ fn parse_updates(updates: &str) -> Vec<Vec<u32>> {
         .collect()
 }
 
-fn get_left_pairs<'a, 'b>(needle: &'a u32, rules: &'b Vec<(u32, u32)>) -> Vec<&'b (u32, u32)> {
+fn get_left_pairs<'a>(needle: &'_ u32, rules: &'a Vec<(u32, u32)>) -> Vec<&'a (u32, u32)> {
     rules.iter().filter(|(lhs, _)| lhs == needle).collect()
 }
 
-fn get_right_pairs<'a, 'b>(needle: &'a u32, rules: &'b Vec<(u32, u32)>) -> Vec<&'b (u32, u32)> {
+fn get_right_pairs<'a>(needle: &'_ u32, rules: &'a Vec<(u32, u32)>) -> Vec<&'a (u32, u32)> {
     rules.iter().filter(|(_, rhs)| rhs == needle).collect()
 }
 
